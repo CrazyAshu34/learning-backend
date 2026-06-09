@@ -1,12 +1,9 @@
 import express from "express";
 
 const app = express();
-const PORT = 3000;
 
-app.get("/", (req, res) => {
-  res.send("Backend is running");
-});
+app.use(express.json());
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(5000, () => {
+  console.log("Server is running on port 5000");
 });
