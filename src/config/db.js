@@ -1,4 +1,5 @@
 import sqlite3 from "sqlite3";
 
-export const db = new splite3.Database("./database.db");
+const db = new sqlite3.Database("./test.db");
 
+export default db;
