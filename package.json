@@ -13,10 +13,10 @@
   "license": "ISC",
   "author": "ashutosh",
   "type": "module",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "dev": "nodemon index.js",
-    "start": "node index.js",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
     "test": "echo \"No tests configured\" && exit 0"
   },
   "dependencies": {
