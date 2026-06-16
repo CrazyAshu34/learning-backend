@@ -1,11 +1,12 @@
 import db from "../../config/db.js";
+import crypto from "crypto";
 
 // important
 db.run(`PRAGMA foreign_keys = ON`);
 
 db.run(`
   CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     business_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
@@ -19,6 +20,8 @@ export const createUser = async (req, res) => {
   try {
     const { business_id, name, email, password, role } = req.body;
 
+    const id = crypto.randomUUID();
+
     if (!business_id || !name || !email || !password) {
       return res.status(400).json({
         message: "All fields are required",
@@ -27,13 +30,14 @@ export const createUser = async (req, res) => {
 
     const query = `
       INSERT INTO users
-      (business_id, name, email, password, role)
-      VALUES (?, ?, ?, ?, ?)
+      (id, business_id, name, email, password, role)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
 
     db.run(
       query,
       [
+        id,
         business_id,
         name,
         email,
@@ -49,14 +53,29 @@ export const createUser = async (req, res) => {
 
         res.status(201).json({
           message: "User created",
-          userId: this.lastID,
+          userId: id,
         });
-        console.log(this);
       },
     );
   } catch (error) {
     res.status(500).json({
       message: error.message,
     });
+  }
+};
+
+export const getUser = async (req, res) => {
+  try {
+    db.all(`SELECT * from users`, (err, raw) => {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log("raw", raw);
+        res.status(200).json({ message: "got all users", data: raw });
+      }
+    });
+  } catch (error) {
+    console.error("error in getting role");
+    res.status(400).json({ message: "error users" });
   }
 };
