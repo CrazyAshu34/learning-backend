@@ -42,27 +42,34 @@ db.all("PRAGMA table_info(users)", (err, cols) => {
           password TEXT NOT NULL,
           role TEXT NOT NULL DEFAULT 'agent',
           FOREIGN KEY (business_id) REFERENCES business(id)
-        )`
+        )`,
       );
 
       db.run(
         `INSERT INTO users_new (id, business_id, name, email, password, role)
          SELECT id, CAST(business_id AS TEXT), name, email, password, role FROM users`,
         (insertErr) => {
-          if (insertErr) return console.error("Migration insert error:", insertErr.message);
+          if (insertErr)
+            return console.error("Migration insert error:", insertErr.message);
 
           db.run("DROP TABLE users", (dropErr) => {
-            if (dropErr) return console.error("Drop old users error:", dropErr.message);
+            if (dropErr)
+              return console.error("Drop old users error:", dropErr.message);
 
             db.run("ALTER TABLE users_new RENAME TO users", (renameErr) => {
-              if (renameErr) return console.error("Rename users_new error:", renameErr.message);
+              if (renameErr)
+                return console.error(
+                  "Rename users_new error:",
+                  renameErr.message,
+                );
               db.run("COMMIT", (commitErr) => {
-                if (commitErr) return console.error("Commit error:", commitErr.message);
+                if (commitErr)
+                  return console.error("Commit error:", commitErr.message);
                 console.log("Migration completed.");
               });
             });
           });
-        }
+        },
       );
     });
   }
@@ -101,24 +108,37 @@ export const createUser = async (req, res) => {
       if (e) return res.status(500).json({ message: e.message });
 
       if (!row) {
-        return res.status(400).json({ message: "Referenced business not found" });
+        return res
+          .status(400)
+          .json({ message: "Referenced business not found" });
       }
 
+      const userRole = role || "agent";
+
       const query = `
-        INSERT INTO users
-        (id, business_id, name, email, password, role)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `;
+    INSERT INTO users
+    (id, business_id, name, email, password, role)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
 
       db.run(
         query,
-        [id, business_id, name, email, password, role || "agent"],
+        [id, business_id, name, email, password, userRole],
         function (err) {
           if (err) {
             return res.status(400).json({ message: err.message });
           }
 
-          res.status(201).json({ message: "User created", userId: id });
+          return res.status(201).json({
+            message: "User created",
+            user: {
+              id,
+              business_id,
+              name,
+              email,
+              role: userRole,
+            },
+          });
         },
       );
     });
@@ -142,6 +162,27 @@ export const getUser = async (req, res) => {
   } catch (error) {
     console.error("error in getting role");
     res.status(400).json({ message: "error users" });
+  }
+};
+export const getSingleUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    db.get(`SELECT * FROM users WHERE id = ?`, [id], (err, row) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Error fetching user", error: err.message });
+      }
+
+      if (!row) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      return res.status(200).json({ message: "Got single user", data: row });
+    });
+  } catch (error) {
+    console.error("error in getting role", error);
+    res.status(500).json({ message: "Error fetching user" });
   }
 };
 
