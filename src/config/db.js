@@ -55,7 +55,8 @@ export const initDB = async () => {
       email VARCHAR(255) NOT NULL UNIQUE,
       password VARCHAR(255) NOT NULL,
       role VARCHAR(50) NOT NULL DEFAULT 'agent',
-      FOREIGN KEY (business_id) REFERENCES business(id) ON DELETE SET NULL
+      FOREIGN KEY (business_id) REFERENCES business(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
   console.log("Users table initialized.");
@@ -69,7 +70,8 @@ export const initDB = async () => {
       phone VARCHAR(255),
       dob VARCHAR(255),
       assignAgent VARCHAR(255),
-      actionStage VARCHAR(255)
+      actionStage VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
   console.log("Customers table initialized.");
