@@ -9,6 +9,7 @@ import {
 } from "../modules/role/role.js";
 import {
   bulkDeleteCustomer,
+  bulkUpdateCustomer,
   createCustomer,
   getAllCustomer,
   getSingleCustomer,
@@ -33,5 +34,6 @@ router.get("/customer", getAllCustomer);
 router.patch("/customer/:id", updateCustomer);
 router.get("/customer/:id", getSingleCustomer);
 router.delete("/customer", bulkDeleteCustomer);
+router.put("/customer", bulkUpdateCustomer);
 
 export default router;
