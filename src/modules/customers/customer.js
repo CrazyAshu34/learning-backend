@@ -165,3 +165,38 @@ export const getSingleCustomer = async (req, res) => {
     return res.status(500).json({ message: "Error fetching user" });
   }
 };
+export const bulkDeleteCustomer = async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide customer IDs",
+      });
+    }
+
+    const placeholders = ids.map(() => "?").join(",");
+
+    const sql = `
+      DELETE FROM customers
+      WHERE id IN (${placeholders})
+    `;
+
+    const [result] = await db.execute(sql, ids);
+
+    return res.status(200).json({
+      success: true,
+      message: `${result.affectedRows} customer(s) deleted successfully`,
+      deletedCount: result.affectedRows,
+    });
+  } catch (error) {
+    console.error("Bulk delete customers error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
