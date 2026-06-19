@@ -257,5 +257,3 @@ export const bulkDeleteCustomer = async (req, res) => {
   }
 };
 
-export const str = "ashutosh";
-export const str2 = "dhashu";

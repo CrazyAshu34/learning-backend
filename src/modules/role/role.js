@@ -1,14 +1,6 @@
 import db from "../../config/db.js";
 import crypto from "crypto";
 import { isMissing } from "../../utils.js";
-import { str } from "../customers/customer.js";
-
-import { str2 } from "../customers/customer.js";
-
-
-console.log(str === str)
-
-
 
 export const createUser = async (req, res) => {
   try {
