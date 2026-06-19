@@ -7,7 +7,7 @@ import {
   getSingleUser,
   getUser,
 } from "../modules/role/role.js";
-import { createCustomer } from "../modules/customers/customer.js";
+import { createCustomer, getAllCustomer } from "../modules/customers/customer.js";
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ router.get("/user", getUser);
 router.get("/user/:id", getSingleUser);
 router.delete("/user/delete/:id", deleteUser);
 // ... customer ...
-// router.get("/customer", getCustomers);
 router.post("/customer", createCustomer);
+router.get("/customer", getAllCustomer);
 
 export default router;

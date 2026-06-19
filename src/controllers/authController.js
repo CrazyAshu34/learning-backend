@@ -2,6 +2,8 @@ import db from "../config/db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import crypto from "crypto";
+
 dotenv.config();
 
 function hasPasswordFn(password) {
@@ -40,32 +42,28 @@ export const register = async (req, res) => {
     const { name, email, password } = req.body;
 
     const hashPassword = await hasPasswordFn(password);
+    const id = crypto.randomUUID();
 
-    db.run(
-      `INSERT INTO users (name, email, password) VALUES(?,?,?)`,
-      [name, email, hashPassword],
-      (e) => {
-        if (e) {
-          console.log(e);
-          return res.status(400).json({
-            message: "User already exists",
-          });
-        } else {
-          res.status(201).json({
-            message: "User registered successfully",
-          });
-        }
-      },
-    );
+    const query = `INSERT INTO users (id, name, email, password) VALUES(?,?,?,?)`;
+    await db.execute(query, [id, name, email, hashPassword]);
 
-    console.log(name, email, password);
+    console.log("User registered successfully:", name);
+    return res.status(201).json({
+      message: "User registered successfully",
+    });
   } catch (e) {
     console.error("registration error:, ", e.message);
-    res
+    if (e.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({
+        message: "User already exists",
+      });
+    }
+    return res
       .status(500)
-      .json({ message: "user cannot register", message: e.message });
+      .json({ message: "user cannot register", error: e.message });
   }
 };
+
 //  login user ==>
 export const login = async (req, res) => {
   try {
@@ -78,52 +76,41 @@ export const login = async (req, res) => {
       });
     }
 
-    db.get(
-      `SELECT * FROM users WHERE email = ?`,
-      [email],
-      async (err, user) => {
-        if (err) {
-          console.error("Database error:", err);
-          return res.status(500).json({
-            ok: false,
-            message: "Internal server error",
-          });
-        }
+    const [rows] = await db.execute(`SELECT * FROM users WHERE email = ?`, [email]);
+    const user = rows[0];
 
-        // No user found with this email
-        if (!user) {
-          return res.status(401).json({
-            ok: false,
-            message: "Invalid email or password",
-          });
-        }
+    // No user found with this email
+    if (!user) {
+      return res.status(401).json({
+        ok: false,
+        message: "Invalid email or password",
+      });
+    }
 
-        // Now safely compare password
-        const isPasswordMatch = await bcrypt.compare(password, user.password);
+    // Now safely compare password
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
 
-        if (!isPasswordMatch) {
-          return res.status(401).json({
-            ok: false,
-            message: "Invalid email or password",
-          });
-        }
+    if (!isPasswordMatch) {
+      return res.status(401).json({
+        ok: false,
+        message: "Invalid email or password",
+      });
+    }
 
-        // Generate token
-        const token = generateToken(user);
-        console.log("token--->", { token });
+    // Generate token
+    const token = generateToken(user);
+    console.log("token--->", { token });
 
-        // Remove password from response
-        const { password: _, ...userWithoutPassword } = user;
-        console.log("Login successful, token:", password);
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+    console.log("Login successful, token:", password);
 
-        return res.status(200).json({
-          ok: true,
-          message: "Login successful",
-          user: userWithoutPassword,
-          token,
-        });
-      },
-    );
+    return res.status(200).json({
+      ok: true,
+      message: "Login successful",
+      user: userWithoutPassword,
+      token,
+    });
   } catch (error) {
     console.error("Login error:", error.message);
     return res.status(500).json({
