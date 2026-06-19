@@ -148,6 +148,62 @@ export const updateCustomer = async (req, res) => {
   }
 };
 
+export const bulkUpdateCustomer = async (req, res) => {
+  try {
+    const { ids, assignAgent, actionStage } = req?.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide customer IDs",
+      });
+    }
+    const placeholders = ids.map(() => "?").join(",");
+
+    const sql = `
+      UPDATE customers
+      SET
+        assignAgent = ?,
+        actionStage = ?
+      WHERE id IN (${placeholders})
+    `;
+
+    const [result] = await db.execute(sql, [myAssignAgent, myIds, ...ids]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer not found",
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No customers found",
+      });
+    }
+
+    const [updatedRows] = await db.execute(
+      `SELECT * FROM customers WHERE id IN (${placeholders})`,
+      ids,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Customers updated successfully",
+      customers: updatedRows,
+    });
+  } catch (error) {
+    console.error("Bulk update customer error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 export const getSingleCustomer = async (req, res) => {
   try {
     const { id } = req.params;
@@ -200,3 +256,6 @@ export const bulkDeleteCustomer = async (req, res) => {
     });
   }
 };
+
+export const str = "ashutosh";
+export const str2 = "dhashu";
