@@ -18,7 +18,8 @@ import {
 } from "../modules/customers/customer.js";
 
 import { protect, restrictTo } from "../middleware/authMiddleware.js";
-import { createOrder } from "../modules/orders/orders.js";
+import { createOrder, getAllOrders } from "../modules/orders/orders.js";
+import { createPayment } from "../modules/payment/payment.js";
 
 const router = express.Router();
 
@@ -49,4 +50,8 @@ router.put("/customer", bulkUpdateCustomer);
 router.post("/customer/filter", customerFilter);
 // create orders
 router.post("/create-order", createOrder);
+router.get("/orders", getAllOrders);
+// create - payment
+router.post("/create-payment", createPayment);
+
 export default router;
