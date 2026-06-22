@@ -18,7 +18,7 @@ export const createBusiness = async (req, res) => {
     console.log("business created successfully");
     return res.status(201).json({
       message: "success",
-      data: { name, email, phone },
+      data: { id, name, email, phone },
     });
   } catch (error) {
     console.error("error creating business:", error.message);
@@ -34,7 +34,21 @@ export const createBusiness = async (req, res) => {
 
 export const getBusiness = async (req, res) => {
   try {
-    const [rows] = await db.execute("SELECT * FROM business");
+    const { role, business_id } = req.user;
+
+    let rows;
+    if (role === "super_admin") {
+      [rows] = await db.execute("SELECT * FROM business ORDER BY created_at DESC");
+    } else {
+      if (!business_id) {
+        return res.status(200).json({
+          message: "Businesses fetched successfully",
+          data: [],
+        });
+      }
+      [rows] = await db.execute("SELECT * FROM business WHERE id = ?", [business_id]);
+    }
+
     return res.status(200).json({
       message: "Businesses fetched successfully",
       data: rows,

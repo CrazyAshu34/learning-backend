@@ -6,9 +6,12 @@ import crypto from "crypto";
 
 dotenv.config();
 
-function hasPasswordFn(password) {
-  return bcrypt.hash(password, 10);
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function hashPassword(password) {
+  return bcrypt.hash(password, 12);
 }
+
 export const generateToken = (user) => {
   return jwt.sign(
     {
@@ -18,116 +21,93 @@ export const generateToken = (user) => {
       role: user.role,
     },
     process.env.JWT_SECRET,
-    {
-      expiresIn: "1h",
-    }
+    { expiresIn: "8h" }
   );
 };
 
+// ─── POST /register ──────────────────────────────────────────────────────────
+// Bootstrap-only: creates the ONE super_admin for the entire CRM system.
+// Will reject if a super_admin already exists.
 
-export const verifyToken = (token) => {
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    return decoded;
-  } catch (e) {
-    console.error("Token verification error: ", e.message);
-    return null;
-  }
-};
-
-// access token
-export const authMiddleWare = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ message: "Authorization header missing" });
-  }
-};
-
-// refresh token
-// ----------------
-
-// create user
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    const hashPassword = await hasPasswordFn(password);
-    const id = crypto.randomUUID();
-
-    const query = `INSERT INTO users (id, name, email, password) VALUES(?,?,?,?)`;
-    await db.execute(query, [id, name, email, hashPassword]);
-
-    console.log("User registered successfully:", name);
-    return res.status(201).json({
-      message: "User registered successfully",
-    });
-  } catch (e) {
-    console.error("registration error:, ", e.message);
-    if (e.code === "ER_DUP_ENTRY") {
+    if (!name || !email || !password) {
       return res.status(400).json({
-        message: "User already exists",
+        message: "name, email, and password are required.",
       });
     }
-    return res
-      .status(500)
-      .json({ message: "user cannot register", error: e.message });
+
+    // Guard: only one super_admin is ever allowed
+    const [existing] = await db.execute(
+      `SELECT id FROM users WHERE role = 'super_admin' LIMIT 1`
+    );
+
+    if (existing.length > 0) {
+      return res.status(403).json({
+        message:
+          "A super_admin already exists. Self-registration is disabled. Contact your administrator.",
+      });
+    }
+
+    const id = crypto.randomUUID();
+    const hashedPassword = await hashPassword(password);
+
+    await db.execute(
+      `INSERT INTO users (id, name, email, password, role) VALUES (?, ?, ?, ?, 'super_admin')`,
+      [id, name, email, hashedPassword]
+    );
+
+    console.log(`[AUTH] super_admin created: ${email}`);
+    return res.status(201).json({
+      message: "Super admin registered successfully. You can now log in.",
+    });
+  } catch (error) {
+    console.error("[AUTH] register error:", error.message);
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ message: "Email already exists." });
+    }
+    return res.status(500).json({ message: "Server error.", error: error.message });
   }
 };
 
-//  login user ==>
+// ─── POST /login ─────────────────────────────────────────────────────────────
+// Unified login for ALL roles: super_admin, owner, admin, agent.
+
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({
-        ok: false,
-        message: "Email and password are required",
-      });
+      return res.status(400).json({ message: "Email and password are required." });
     }
 
-    const [rows] = await db.execute(`SELECT * FROM users WHERE email = ?`, [
-      email,
-    ]);
+    const [rows] = await db.execute(`SELECT * FROM users WHERE email = ?`, [email]);
     const user = rows[0];
 
-    // No user found with this email
     if (!user) {
-      return res.status(401).json({
-        ok: false,
-        message: "Invalid email or password",
-      });
+      return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    // Now safely compare password
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordMatch) {
-      return res.status(401).json({
-        ok: false,
-        message: "Invalid email or password",
-      });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    // Generate token
     const token = generateToken(user);
-    console.log("token--->", { token });
 
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
-    console.log("Login successful, token:", password);
+    // Strip password before sending
+    const { password: _, ...safeUser } = user;
 
+    console.log(`[AUTH] Login: ${user.email} (role: ${user.role})`);
     return res.status(200).json({
-      ok: true,
-      message: "Login successful",
-      user: userWithoutPassword,
+      message: "Login successful.",
+      user: safeUser,
       token,
     });
   } catch (error) {
-    console.error("Login error:", error.message);
-    return res.status(500).json({
-      ok: false,
-      message: "Something went wrong",
-    });
+    console.error("[AUTH] login error:", error.message);
+    return res.status(500).json({ message: "Server error." });
   }
 };

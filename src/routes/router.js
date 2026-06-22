@@ -16,7 +16,6 @@ import {
   getSingleCustomer,
   updateCustomer,
 } from "../modules/customers/customer.js";
-
 import { protect, restrictTo } from "../middleware/authMiddleware.js";
 import {
   createSubscriptionOrder,
@@ -29,47 +28,69 @@ import { createPayment } from "../modules/payment/payment.js";
 
 const router = express.Router();
 
-// ====================== PUBLIC ROUTES ======================
+// =============================================================================
+// PUBLIC ROUTES — No token required
+// =============================================================================
+
+// Bootstrap: first-time super_admin creation only (blocked once super_admin exists)
 router.post("/register", register);
+
+// Unified login for ALL roles: super_admin, owner, admin, agent
 router.post("/login", login);
 
-// ====================== PROTECTED ROUTES ======================
-router.use(protect); // ← All routes below this require token
+// =============================================================================
+// PROTECTED ROUTES — All routes below require a valid JWT token
+// =============================================================================
+router.use(protect);
 
-// Business
-router.post("/business", restrictTo("admin", "owner"), createBusiness);
+// ── Business ──────────────────────────────────────────────────────────────────
+// Only super_admin can create a business
+router.post("/business", restrictTo("super_admin"), createBusiness);
+// super_admin sees all; owner/admin see their own (handled in controller)
 router.get("/business", getBusiness);
 
-// Users
-router.post("/user", restrictTo("admin", "owner"), createUser);
-router.get("/user", restrictTo("admin", "owner"), getUser);
-router.get("/user/:id", getSingleUser);
-router.delete("/user/delete/:id", restrictTo("admin", "owner"), deleteUser);
+// ── Users ─────────────────────────────────────────────────────────────────────
+// Role permission matrix is enforced inside createUser controller:
+//   super_admin → owner, admin, agent (any business)
+//   owner       → admin, agent        (own business only)
+//   admin       → agent               (own business only)
+router.post("/user", restrictTo("super_admin", "owner", "admin"), createUser);
+router.get("/user", restrictTo("super_admin", "owner", "admin"), getUser);
+router.get("/user/:id", restrictTo("super_admin", "owner", "admin"), getSingleUser);
+router.delete("/user/delete/:id", restrictTo("super_admin", "owner", "admin"), deleteUser);
 
-// Customers
-router.post("/customer", createCustomer);
+// ── Customers ─────────────────────────────────────────────────────────────────
+router.post("/customer", createCustomer);   
 router.get("/customer", getAllCustomer);
 router.get("/customer/:id", getSingleCustomer);
 router.patch("/customer/:id", updateCustomer);
 router.delete("/customer", bulkDeleteCustomer);
 router.put("/customer", bulkUpdateCustomer);
 router.post("/customer/filter", customerFilter);
-// create orders
+
+// ── Orders & Payments (legacy) ────────────────────────────────────────────────
 router.post("/create-order", createOrder);
 router.get("/orders", getAllOrders);
-// create - payment
 router.post("/create-payment", createPayment);
 
-// ====================== SaaS SUBSCRIPTION SYSTEM ======================
+// =============================================================================
+// SaaS SUBSCRIPTION SYSTEM
+// =============================================================================
+
+// Create a Razorpay order for Pro plan (₹299/month)
 router.post("/api/payments/create", createSubscriptionOrder);
+
+// Verify Razorpay signature and activate Pro subscription
 router.post("/api/payments/verify", verifySubscriptionPayment);
+
+// Get current subscription status, plan, expiry, and days remaining
 router.get("/api/subscription/current", getCurrentSubscription);
 
-// Example Pro-only test route to verify requirePro middleware
+// Sample Pro-gated route — use requirePro on any route you want to restrict
 router.get("/api/pro-only-data", requirePro, (req, res) => {
   res.json({
     success: true,
-    message: "Welcome Pro Business! You have access to this premium route.",
+    message: "You have access to this premium feature.",
     subscription: req.subscription,
   });
 });
