@@ -41,10 +41,22 @@ export const initDB = async () => {
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255) NOT NULL UNIQUE,
       phone VARCHAR(255) NOT NULL,
+      plan VARCHAR(50) DEFAULT 'free',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
   console.log("Business table initialized.");
+
+  // Check if plan column exists in business table (in case table was created previously without plan column)
+  try {
+    const [columns] = await db.query("SHOW COLUMNS FROM business LIKE 'plan'");
+    if (columns.length === 0) {
+      await db.query("ALTER TABLE business ADD COLUMN plan VARCHAR(50) DEFAULT 'free'");
+      console.log("Added 'plan' column to business table.");
+    }
+  } catch (err) {
+    console.error("Error updating business table schema:", err.message);
+  }
 
   // Create table 'users'
   await db.query(`
@@ -75,6 +87,24 @@ export const initDB = async () => {
     )
   `);
   console.log("Customers table initialized.");
+
+  // Create table 'subscriptions'
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id VARCHAR(255) PRIMARY KEY,
+      business_id VARCHAR(255) NOT NULL,
+      plan_name VARCHAR(50) NOT NULL DEFAULT 'free',
+      status ENUM('pending', 'active', 'expired') NOT NULL DEFAULT 'pending',
+      amount DECIMAL(10, 2) NOT NULL,
+      provider_order_id VARCHAR(255) NOT NULL UNIQUE,
+      provider_payment_id VARCHAR(255) NULL,
+      start_date DATETIME NULL,
+      expiry_date DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (business_id) REFERENCES business(id) ON DELETE CASCADE
+    )
+  `);
+  console.log("Subscriptions table initialized.");
 
   // payment
   await db.query(`

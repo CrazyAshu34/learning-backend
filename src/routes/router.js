@@ -18,6 +18,12 @@ import {
 } from "../modules/customers/customer.js";
 
 import { protect, restrictTo } from "../middleware/authMiddleware.js";
+import {
+  createSubscriptionOrder,
+  verifySubscriptionPayment,
+  getCurrentSubscription,
+} from "../controllers/subscriptionController.js";
+import { requirePro } from "../middleware/subscriptionMiddleware.js";
 import { createOrder, getAllOrders } from "../modules/orders/orders.js";
 import { createPayment } from "../modules/payment/payment.js";
 
@@ -53,5 +59,19 @@ router.post("/create-order", createOrder);
 router.get("/orders", getAllOrders);
 // create - payment
 router.post("/create-payment", createPayment);
+
+// ====================== SaaS SUBSCRIPTION SYSTEM ======================
+router.post("/api/payments/create", createSubscriptionOrder);
+router.post("/api/payments/verify", verifySubscriptionPayment);
+router.get("/api/subscription/current", getCurrentSubscription);
+
+// Example Pro-only test route to verify requirePro middleware
+router.get("/api/pro-only-data", requirePro, (req, res) => {
+  res.json({
+    success: true,
+    message: "Welcome Pro Business! You have access to this premium route.",
+    subscription: req.subscription,
+  });
+});
 
 export default router;

@@ -10,10 +10,20 @@ function hasPasswordFn(password) {
   return bcrypt.hash(password, 10);
 }
 export const generateToken = (user) => {
-  return jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, {
-    expiresIn: "1h",
-  });
+  return jwt.sign(
+    {
+      id: user.id,
+      business_id: user.business_id,
+      email: user.email,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "1h",
+    }
+  );
 };
+
 
 export const verifyToken = (token) => {
   try {
