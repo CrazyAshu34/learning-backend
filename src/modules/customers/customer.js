@@ -256,3 +256,63 @@ export const bulkUpdateCustomer = async (req, res) => {
     });
   }
 };
+
+///////
+export const customerFilter = async (req, res) => {
+  try {
+    const { assignAgent = [], actionStage = [], search = "" } = req.body;
+
+    let sql = `SELECT * FROM customers WHERE 1=1`;
+    const params = [];
+
+    // Agent Filter
+    if (assignAgent.length > 0) {
+      const placeholders = assignAgent.map(() => "?").join(",");
+
+      sql += ` AND assignAgent IN (${placeholders})`;
+      params.push(...assignAgent);
+    }
+
+    // Stage Filter
+    if (actionStage.length > 0) {
+      const placeholders = actionStage.map(() => "?").join(",");
+
+      sql += ` AND actionStage IN (${placeholders})`;
+      params.push(...actionStage);
+    }
+
+    // Search Filter
+    if (search.trim()) {
+      sql += `
+        AND (
+          name LIKE ?
+          OR email LIKE ?
+          OR phone LIKE ?
+        )
+      `;
+
+      const term = `%${search}%`;
+
+      params.push(term, term, term);
+    }
+
+    sql += ` ORDER BY created_at DESC`;
+
+
+    const [rows] = await db.execute(sql, params);
+
+    return res.status(200).json({
+      success: true,
+      count: rows.length,
+      customerList: rows,
+    });
+  } catch (error) {
+    console.error("Customer filter error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};

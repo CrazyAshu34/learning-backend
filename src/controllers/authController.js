@@ -76,7 +76,9 @@ export const login = async (req, res) => {
       });
     }
 
-    const [rows] = await db.execute(`SELECT * FROM users WHERE email = ?`, [email]);
+    const [rows] = await db.execute(`SELECT * FROM users WHERE email = ?`, [
+      email,
+    ]);
     const user = rows[0];
 
     // No user found with this email

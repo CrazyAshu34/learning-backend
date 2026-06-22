@@ -11,29 +11,42 @@ import {
   bulkDeleteCustomer,
   bulkUpdateCustomer,
   createCustomer,
+  customerFilter,
   getAllCustomer,
   getSingleCustomer,
   updateCustomer,
 } from "../modules/customers/customer.js";
 
+import { protect, restrictTo } from "../middleware/authMiddleware.js";
+import { createOrder } from "../modules/orders/orders.js";
+
 const router = express.Router();
 
-// ... business ...
-// router.post("/register", register);
-// router.post("/login", login);
-router.post("/business", createBusiness);
+// ====================== PUBLIC ROUTES ======================
+router.post("/register", register);
+router.post("/login", login);
+
+// ====================== PROTECTED ROUTES ======================
+router.use(protect); // ← All routes below this require token
+
+// Business
+router.post("/business", restrictTo("admin", "owner"), createBusiness);
 router.get("/business", getBusiness);
-// ... user ...
-router.post("/user", createUser);
-router.get("/user", getUser);
+
+// Users
+router.post("/user", restrictTo("admin", "owner"), createUser);
+router.get("/user", restrictTo("admin", "owner"), getUser);
 router.get("/user/:id", getSingleUser);
-router.delete("/user/delete/:id", deleteUser);
-// ... customer ...
+router.delete("/user/delete/:id", restrictTo("admin", "owner"), deleteUser);
+
+// Customers
 router.post("/customer", createCustomer);
 router.get("/customer", getAllCustomer);
-router.patch("/customer/:id", updateCustomer);
 router.get("/customer/:id", getSingleCustomer);
+router.patch("/customer/:id", updateCustomer);
 router.delete("/customer", bulkDeleteCustomer);
 router.put("/customer", bulkUpdateCustomer);
-
+router.post("/customer/filter", customerFilter);
+// create orders
+router.post("/create-order", createOrder);
 export default router;

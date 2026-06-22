@@ -1,5 +1,7 @@
+// modules/role/role.js
 import db from "../../config/db.js";
 import crypto from "crypto";
+import bcrypt from "bcrypt";
 import { isMissing } from "../../utils.js";
 
 export const createUser = async (req, res) => {
@@ -16,56 +18,61 @@ export const createUser = async (req, res) => {
     ];
 
     const missingField = fields
-      ?.filter((item) => isMissing(item?.value))
-      ?.map((data) => data.key);
+      .filter((item) => isMissing(item?.value))
+      .map((data) => data.key);
 
     if (missingField.length > 0) {
       return res.status(400).json({
         message: "All fields are required",
-        missingIs: missingField,
+        missing: missingField,
       });
     }
 
-    // Normalize types: business_id and password should be stored as strings
-    business_id = String(business_id);
-    password = String(password);
-
-    // Ensure referenced business exists
-    const [businessRows] = await db.execute(`SELECT id FROM business WHERE id = ?`, [business_id]);
-    if (businessRows.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Referenced business not found" });
+    // Check if email already exists
+    const [existing] = await db.execute(
+      `SELECT id FROM users WHERE email = ?`,
+      [email],
+    );
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "Email already exists" });
     }
+
+    // Verify business exists
+    const [businessRows] = await db.execute(
+      `SELECT id FROM business WHERE id = ?`,
+      [business_id],
+    );
+    if (businessRows.length === 0) {
+      return res.status(400).json({ message: "Referenced business not found" });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     const userRole = role || "agent";
 
     const query = `
-      INSERT INTO users
-      (id, business_id, name, email, password, role)
+      INSERT INTO users (id, business_id, name, email, password, role)
       VALUES (?, ?, ?, ?, ?, ?)
     `;
 
-    await db.execute(query, [id, business_id, name, email, password, userRole]);
+    await db.execute(query, [
+      id,
+      String(business_id),
+      name,
+      email,
+      hashedPassword,
+      userRole,
+    ]);
 
     return res.status(201).json({
-      message: "User created",
-      user: {
-        id,
-        business_id,
-        name,
-        email,
-        role: userRole,
-      },
+      message: "User created successfully",
+      user: { id, business_id, name, email, role: userRole },
     });
   } catch (error) {
     console.error("Create user error:", error);
-    if (error.code === "ER_DUP_ENTRY") {
-      return res.status(400).json({ message: "Email already exists" });
-    }
-    return res.status(500).json({
-      message: error.message,
-    });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 

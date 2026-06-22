@@ -75,6 +75,22 @@ export const initDB = async () => {
     )
   `);
   console.log("Customers table initialized.");
+
+  // payment
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id VARCHAR(36) PRIMARY KEY,
+      user_id VARCHAR(36),
+      amount DECIMAL(10,2) NOT NULL,
+      currency VARCHAR(10) DEFAULT 'INR',
+      status ENUM('pending','paid','failed') DEFAULT 'pending',
+      payment_provider VARCHAR(50),
+      provider_order_id VARCHAR(255),
+      provider_payment_id VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) 
+  `);
+  console.log("--orders table initialized--");
 };
 
 export default db;
